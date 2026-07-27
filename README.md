@@ -147,8 +147,6 @@ ETH Cinco de Mayo
 
 ETHGlobal
 
-Ethereum México
-
 Starknet Foundation
 
 Polygon
