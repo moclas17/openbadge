@@ -1,0 +1,453 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------------------------
+// Enums
+// ---------------------------------------------------------------------------
+
+enum OrganizationStatus {
+  active
+  disabled
+  archived
+}
+
+enum UserStatus {
+  active
+  disabled
+  deleted
+}
+
+enum EventStatus {
+  draft
+  published
+  paused
+  archived
+  deleted
+}
+
+enum EventVisibility {
+  public
+  unlisted
+  private
+}
+
+enum ClaimCodeStatus {
+  available
+  reserved
+  used
+  expired
+  revoked
+}
+
+enum ClaimStatus {
+  pending
+  validated
+  queued
+  minting
+  completed
+  failed
+  expired
+  cancelled
+}
+
+enum MintOperationStatus {
+  queued
+  preparing
+  submitted
+  confirming
+  confirmed
+  failed
+  replaced
+  cancelled
+}
+
+enum MediaStatus {
+  pending
+  available
+  rejected
+  deleted
+}
+
+enum MembershipRole {
+  owner
+  organizer
+  viewer
+}
+
+enum ChainSyncStatus {
+  idle
+  syncing
+  error
+  paused
+}
+
+// ---------------------------------------------------------------------------
+// Models
+// ---------------------------------------------------------------------------
+
+model Organization {
+  id             String             @id
+  name           String
+  slug           String             @unique
+  description    String?            @db.Text
+  website_url    String?
+  logo_media_id  String?
+  status         OrganizationStatus @default(active)
+  created_at     DateTime           @default(now())
+  updated_at     DateTime           @updatedAt
+  deleted_at     DateTime?
+
+  // Relations
+  events      Event[]
+  memberships OrgMembership[]
+  logo        Media?          @relation("OrgLogo", fields: [logo_media_id], references: [id])
+
+  @@map("organizations")
+}
+
+model User {
+  id              String     @id
+  display_name    String?
+  avatar_media_id String?
+  status          UserStatus @default(active)
+  created_at      DateTime   @default(now())
+  updated_at      DateTime   @updatedAt
+  deleted_at      DateTime?
+
+  // Relations
+  wallets       Wallet[]
+  memberships   OrgMembership[]
+  sessions      Session[]
+  notifications InternalNotification[]
+  audit_logs    AuditLog[]
+  media         Media[]
+  events        Event[]
+
+  @@map("users")
+}
+
+model Wallet {
+  id              String    @id
+  user_id         String?
+  chain_namespace String
+  chain_id        Int
+  address         String
+  is_primary      Boolean   @default(false)
+  verified_at     DateTime?
+  created_at      DateTime  @default(now())
+  updated_at      DateTime  @updatedAt
+
+  // Relations
+  user             User?           @relation(fields: [user_id], references: [id])
+  claims           Claim[]
+
+  @@unique([chain_namespace, chain_id, address])
+  @@map("wallets")
+}
+
+model Event {
+  id                  String          @id
+  organization_id     String
+  created_by_user_id  String
+  title               String
+  slug                String          @unique
+  description         String?         @db.Text
+  artwork_media_id    String?
+  banner_media_id     String?
+  location            String?
+  website_url         String?
+  starts_at           DateTime?
+  ends_at             DateTime?
+  claim_starts_at     DateTime?
+  claim_ends_at       DateTime?
+  chain_namespace     String?
+  chain_id            Int?
+  contract_address    String?
+  token_id            BigInt?
+  metadata_uri        String?
+  maximum_claims      Int?
+  status              EventStatus     @default(draft)
+  visibility          EventVisibility @default(public)
+  published_at        DateTime?
+  created_at          DateTime        @default(now())
+  updated_at          DateTime        @updatedAt
+  deleted_at          DateTime?
+
+  // Relations
+  organization  Organization @relation(fields: [organization_id], references: [id])
+  created_by    User         @relation(fields: [created_by_user_id], references: [id])
+  claim_codes   ClaimCode[]
+  claims        Claim[]
+  artwork       Media?       @relation("EventArtwork", fields: [artwork_media_id], references: [id])
+  banner        Media?       @relation("EventBanner", fields: [banner_media_id], references: [id])
+
+  @@index([organization_id])
+  @@index([slug])
+  @@index([status])
+  @@index([visibility])
+  @@index([starts_at])
+  @@index([chain_id, contract_address, token_id])
+  @@map("events")
+}
+
+model ClaimCode {
+  id         String          @id
+  event_id   String
+  code_hash  String          @unique
+  status     ClaimCodeStatus @default(available)
+  expires_at DateTime?
+  used_at    DateTime?
+  created_at DateTime        @default(now())
+  updated_at DateTime        @updatedAt
+
+  // Relations
+  event Event  @relation(fields: [event_id], references: [id])
+  claim Claim?
+
+  @@index([event_id])
+  @@index([code_hash])
+  @@index([status])
+  @@index([expires_at])
+  @@map("claim_codes")
+}
+
+model Claim {
+  id              String      @id
+  event_id        String
+  wallet_id       String
+  claim_code_id   String?     @unique
+  status          ClaimStatus @default(pending)
+  claimed_at      DateTime?
+  expires_at      DateTime?
+  failure_code    String?
+  failure_message String?
+  created_at      DateTime    @default(now())
+  updated_at      DateTime    @updatedAt
+
+  // Relations
+  event           Event            @relation(fields: [event_id], references: [id])
+  wallet          Wallet           @relation(fields: [wallet_id], references: [id])
+  claim_code      ClaimCode?       @relation(fields: [claim_code_id], references: [id])
+  mint_operations MintOperation[]
+
+  @@unique([event_id, wallet_id])
+  @@index([event_id])
+  @@index([wallet_id])
+  @@index([status])
+  @@index([created_at])
+  @@map("claims")
+}
+
+model MintOperation {
+  id                 String              @id
+  claim_id           String
+  attempt_number     Int
+  chain_namespace    String
+  chain_id           Int
+  contract_address   String
+  token_id           BigInt
+  recipient_address  String
+  quantity           Int                 @default(1)
+  status             MintOperationStatus @default(queued)
+  transaction_hash   String?
+  transaction_nonce  Int?
+  block_number       BigInt?
+  block_hash         String?
+  submitted_at       DateTime?
+  confirmed_at       DateTime?
+  last_checked_at    DateTime?
+  failure_code       String?
+  failure_message    String?
+  created_at         DateTime            @default(now())
+  updated_at         DateTime            @updatedAt
+
+  // Relations
+  claim Claim @relation(fields: [claim_id], references: [id])
+
+  @@unique([claim_id, attempt_number])
+  @@index([claim_id])
+  @@index([status])
+  @@index([transaction_hash])
+  @@index([chain_id, contract_address])
+  @@index([last_checked_at])
+  @@map("mint_operations")
+}
+
+model Media {
+  id                  String      @id
+  storage_provider    String
+  bucket              String
+  object_key          String
+  original_filename   String
+  mime_type           String
+  size_bytes          Int
+  width               Int?
+  height              Int?
+  checksum            String
+  status              MediaStatus @default(pending)
+  created_by_user_id  String?
+  created_at          DateTime    @default(now())
+  deleted_at          DateTime?
+
+  // Relations
+  created_by    User?          @relation(fields: [created_by_user_id], references: [id])
+  events_artwork Event[]       @relation("EventArtwork")
+  events_banner  Event[]       @relation("EventBanner")
+  orgs_logo      Organization[] @relation("OrgLogo")
+
+  @@map("media")
+}
+
+model OrgMembership {
+  id              String         @id
+  organization_id String
+  user_id         String
+  role            MembershipRole
+  created_at      DateTime       @default(now())
+  updated_at      DateTime       @updatedAt
+
+  // Relations
+  organization Organization @relation(fields: [organization_id], references: [id])
+  user         User         @relation(fields: [user_id], references: [id])
+
+  @@unique([organization_id, user_id])
+  @@map("org_memberships")
+}
+
+model Session {
+  id               String   @id
+  user_id          String
+  expires_at       DateTime
+  last_activity_at DateTime @default(now())
+  ip_hash          String?
+  user_agent       String?
+  created_at       DateTime @default(now())
+
+  // Relations
+  user User @relation(fields: [user_id], references: [id])
+
+  @@map("sessions")
+}
+
+model AuthChallenge {
+  id              String    @id
+  wallet_address  String
+  chain_namespace String
+  chain_id        Int
+  nonce_hash      String
+  message         String    @db.Text
+  expires_at      DateTime
+  used_at         DateTime?
+  created_at      DateTime  @default(now())
+
+  @@index([wallet_address, chain_namespace, chain_id])
+  @@map("auth_challenges")
+}
+
+model IndexedContractEvent {
+  id               String   @id
+  chain_namespace  String
+  chain_id         Int
+  contract_address String
+  event_name       String
+  transaction_hash String
+  block_number     BigInt
+  block_hash       String
+  log_index        Int
+  token_id         BigInt?
+  from_address     String?
+  to_address       String?
+  quantity         Int?
+  payload          Json?
+  observed_at      DateTime
+  created_at       DateTime @default(now())
+
+  @@unique([chain_namespace, chain_id, transaction_hash, log_index])
+  @@index([chain_id, contract_address, block_number])
+  @@index([transaction_hash, log_index])
+  @@index([token_id])
+  @@index([to_address])
+  @@index([from_address])
+  @@map("indexed_contract_events")
+}
+
+model ChainSyncState {
+  id                        String          @id
+  chain_namespace           String
+  chain_id                  Int
+  contract_address          String
+  last_processed_block      BigInt?
+  last_processed_block_hash String?
+  status                    ChainSyncStatus @default(idle)
+  last_synced_at            DateTime?
+  created_at                DateTime        @default(now())
+  updated_at                DateTime        @updatedAt
+
+  @@unique([chain_namespace, chain_id, contract_address])
+  @@map("chain_sync_states")
+}
+
+model InternalNotification {
+  id         String    @id
+  user_id    String
+  type       String
+  title      String
+  body       String    @db.Text
+  read_at    DateTime?
+  created_at DateTime  @default(now())
+
+  // Relations
+  user User @relation(fields: [user_id], references: [id])
+
+  @@index([user_id])
+  @@map("internal_notifications")
+}
+
+model AuditLog {
+  id              String   @id
+  actor_user_id   String?
+  actor_wallet_id String?
+  action          String
+  entity_type     String
+  entity_id       String
+  metadata        Json?
+  ip_hash         String?
+  user_agent      String?
+  created_at      DateTime @default(now())
+
+  // Relations
+  actor_user User? @relation(fields: [actor_user_id], references: [id])
+
+  @@index([actor_user_id])
+  @@index([entity_type, entity_id])
+  @@index([created_at])
+  @@map("audit_logs")
+}
+
+model QueueJob {
+  id           String    @id
+  type         String
+  entity_type  String?
+  entity_id    String?
+  status       String    @default("pending")
+  attempts     Int       @default(0)
+  available_at DateTime  @default(now())
+  started_at   DateTime?
+  completed_at DateTime?
+  failure_code String?
+  created_at   DateTime  @default(now())
+  updated_at   DateTime  @updatedAt
+
+  @@index([status, available_at])
+  @@index([entity_type, entity_id])
+  @@map("queue_jobs")
+}

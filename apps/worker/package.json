@@ -1,0 +1,29 @@
+{
+  "name": "@openbadge/worker",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "bullmq": "^5.39.0",
+    "ioredis": "^5.4.1",
+    "viem": "^2.21.54",
+    "pino": "^9.6.0",
+    "@openbadge/database": "workspace:*",
+    "@openbadge/domain": "workspace:*",
+    "@openbadge/blockchain": "workspace:*",
+    "@openbadge/queue": "workspace:*",
+    "@openbadge/storage": "workspace:*"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.2",
+    "tsx": "^4.19.2",
+    "@types/node": "^22.10.2",
+    "@openbadge/config": "workspace:*"
+  }
+}

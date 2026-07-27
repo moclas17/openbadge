@@ -1,0 +1,10 @@
+{
+  "name": "@openbadge/storage",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "exports": { ".": { "import": "./src/index.js", "types": "./src/index.d.ts" } },
+  "scripts": { "build": "tsc", "typecheck": "tsc --noEmit" },
+  "dependencies": { "@aws-sdk/client-s3": "^3.717.0", "@aws-sdk/s3-request-presigner": "^3.717.0" },
+  "devDependencies": { "typescript": "^5.7.2", "@openbadge/config": "workspace:*" }
+}

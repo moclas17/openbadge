@@ -1,0 +1,18 @@
+{
+  "label": "OpenBadge V1",
+  "contractName": "OpenBadge",
+  "chainId": "84532",
+  "address": "0x6b5401899251dAF3055501fAE78294566F43d946",
+  "deployer": "0x4872D5EA56Dde9E1a370Ca0702B0CbEE2778C4aA",
+  "blockNumber": "44701113",
+  "timestamp": "1785170514",
+  "roles": {
+    "admin": "0x4872D5EA56Dde9E1a370Ca0702B0CbEE2778C4aA",
+    "eventManager": "0x4872D5EA56Dde9E1a370Ca0702B0CbEE2778C4aA",
+    "minter": "0x4872D5EA56Dde9E1a370Ca0702B0CbEE2778C4aA",
+    "pauser": "0x4872D5EA56Dde9E1a370Ca0702B0CbEE2778C4aA",
+    "revoker": "0x4872D5EA56Dde9E1a370Ca0702B0CbEE2778C4aA"
+  },
+  "compiler": "0.8.25",
+  "optimizerRuns": 200
+}

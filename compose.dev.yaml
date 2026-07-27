@@ -1,0 +1,79 @@
+# Development override — use with:
+#   docker compose -f compose.yaml -f compose.dev.yaml up
+#
+# Exposes all service ports directly and enables hot-reload for app services.
+
+name: openbadge
+
+services:
+  postgres:
+    ports:
+      - "5432:5432"
+
+  redis:
+    ports:
+      - "6379:6379"
+
+  minio:
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+
+  ipfs:
+    ports:
+      - "4001:4001"
+      - "5001:5001"
+      - "8080:8080"
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+      target: deps
+    command: pnpm --filter @openbadge/api dev
+    volumes:
+      - .:/app
+      - /app/node_modules
+    ports:
+      - "3001:3001"
+    environment:
+      NODE_ENV: development
+
+  worker:
+    build:
+      context: .
+      dockerfile: apps/worker/Dockerfile
+      target: deps
+    command: pnpm --filter @openbadge/worker dev
+    volumes:
+      - .:/app
+      - /app/node_modules
+    environment:
+      NODE_ENV: development
+
+  indexer:
+    build:
+      context: .
+      dockerfile: apps/indexer/Dockerfile
+      target: deps
+    command: pnpm --filter @openbadge/indexer dev
+    volumes:
+      - .:/app
+      - /app/node_modules
+    environment:
+      NODE_ENV: development
+
+  frontend:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      target: deps
+    command: pnpm --filter @openbadge/web dev
+    volumes:
+      - .:/app
+      - /app/node_modules
+    ports:
+      - "3000:3000"
+    environment:
+      NODE_ENV: development
+      NEXT_TELEMETRY_DISABLED: "1"

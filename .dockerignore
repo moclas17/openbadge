@@ -1,0 +1,30 @@
+# Dependencies (installed inside the image)
+node_modules
+**/node_modules
+
+# Build output
+**/dist
+**/.next
+**/.turbo
+
+# Env & secrets
+.env
+.env.*
+
+# VCS / editor / OS
+.git
+.gitignore
+.DS_Store
+**/.DS_Store
+.vscode
+.idea
+
+# Docs
+*.md
+docs
+
+# Docker
+Dockerfile
+**/Dockerfile
+compose.yaml
+compose.dev.yaml

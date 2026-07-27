@@ -1,0 +1,10 @@
+{
+  "name": "@openbadge/queue",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "exports": { ".": { "import": "./src/index.js", "types": "./src/index.d.ts" } },
+  "scripts": { "build": "tsc", "typecheck": "tsc --noEmit" },
+  "dependencies": { "bullmq": "^5.39.0", "ioredis": "^5.4.1" },
+  "devDependencies": { "typescript": "^5.7.2", "@openbadge/config": "workspace:*" }
+}
